@@ -5,12 +5,14 @@
       "urls": [
         "https://foryouandyourcustomers.com",
         "https://foryouandyourcustomers.com/events",
-        "https://foryouandyourcustomers.com/search"
+        "https://foryouandyourcustomers.com/cells/vienna"
       ]
     },
     {
       "name": "ORF",
-      "url": "https://orf.at"
+      "urls": [
+        "https://orf.at"
+      ]
     }
   ]
 }
