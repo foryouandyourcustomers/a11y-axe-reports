@@ -1,6 +1,7 @@
 on:
+  workflow_dispatch:
   schedule:
-    - cron:  '0 12 * * *'
+    - cron: "0 12 * * 0"
 
 jobs:
   parse-config:
@@ -15,54 +16,54 @@ jobs:
         run: echo "matrix=$(jq -c . < ./config.json)" >> $GITHUB_OUTPUT
 
   axe:
-      needs: parse-config
-      runs-on: ubuntu-latest
-      strategy:
-          matrix: ${{fromJson(needs.parse-config.outputs.matrix)}}
-      steps: 
-          - name: Checkout repository
-            uses: actions/checkout@v3
-          - name: Setup Node.js
-            uses: actions/setup-node@v3
-            with:
-              node-version: 18
-          - name: Install axe-core/cli
-            run: npm i @axe-core/cli -g
-          - name: Cache chromedriver
-            id: cache-chromedriver
-            uses: actions/cache@v3
-            with:
-              path: /usr/local/bin/chromedriver
-              key: ${{ runner.os }}-chromedriver
-          - name: Install chromedriver
-            if: steps.cache-chromedriver.outputs.cache-hit != 'true'
-            uses: nanasess/setup-chromedriver@v2
-          - name: Create folder
-            run: mkdir -p ${{ matrix.name }}
-          - name: Testing ${{ matrix.name }}
-            run: axe --stdout --chromedriver-path='/usr/local/bin/chromedriver' ${{ join(matrix.urls, ', ') }} > ${{ matrix.name }}/$(date +'%Y-%m-%d').json
-          - name: Remove unneeded data from axe-result
-            run: |
-              jq 'del(.[].inapplicable)' ${{ matrix.name }}/$(date +'%Y-%m-%d').json > ${{ matrix.name }}/tmp.json
-              jq 'del(.[] | .passes, .incomplete, .violations | .[] | .nodes, .tags)' ${{ matrix.name }}/tmp.json > ${{ matrix.name }}/$(date +'%Y-%m-%d').json
-              rm ${{ matrix.name }}/tmp.json
-          - name: Upload result
-            uses: actions/upload-artifact@v3
-            with:
-              name: ${{ matrix.name }}
-              path: ${{ matrix.name }}/*.json
-          
+    needs: parse-config
+    runs-on: ubuntu-latest
+    strategy:
+      matrix: ${{fromJson(needs.parse-config.outputs.matrix)}}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18
+      - name: Install axe-core/cli
+        run: npm i @axe-core/cli -g
+      - name: Cache chromedriver
+        id: cache-chromedriver
+        uses: actions/cache@v3
+        with:
+          path: /usr/local/bin/chromedriver
+          key: ${{ runner.os }}-chromedriver
+      - name: Install chromedriver
+        if: steps.cache-chromedriver.outputs.cache-hit != 'true'
+        uses: nanasess/setup-chromedriver@v2
+      - name: Create folder
+        run: mkdir -p ${{ matrix.name }}
+      - name: Testing ${{ matrix.name }}
+        run: axe --stdout --chromedriver-path='/usr/local/bin/chromedriver' ${{ join(matrix.urls, ', ') }} > ${{ matrix.name }}/$(date +'%Y-%m-%d').json
+      - name: Remove unneeded data from axe-result
+        run: |
+          jq 'del(.[].inapplicable)' ${{ matrix.name }}/$(date +'%Y-%m-%d').json > ${{ matrix.name }}/tmp.json
+          jq 'del(.[] | .passes, .incomplete, .violations | .[] | .nodes, .tags)' ${{ matrix.name }}/tmp.json > ${{ matrix.name }}/$(date +'%Y-%m-%d').json
+          rm ${{ matrix.name }}/tmp.json
+      - name: Upload result
+        uses: actions/upload-artifact@v3
+        with:
+          name: ${{ matrix.name }}
+          path: ${{ matrix.name }}/*.json
+
   publish-results:
-      permissions:
-          contents: write
-      runs-on: ubuntu-latest
-      needs: [axe]
-      steps:
-          - name: Checkout repository
-            uses: actions/checkout@v3
-          - name: Download results
-            uses: actions/download-artifact@v3
-          - name: Publish new results
-            uses: stefanzweifel/git-auto-commit-action@v4
-            with:
-              commit_message: "Publish new results"
+    permissions:
+      contents: write
+    runs-on: ubuntu-latest
+    needs: [axe]
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+      - name: Download results
+        uses: actions/download-artifact@v3
+      - name: Publish new results
+        uses: stefanzweifel/git-auto-commit-action@v4
+        with:
+          commit_message: "Publish new results"
